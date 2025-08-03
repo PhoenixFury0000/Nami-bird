@@ -401,13 +401,13 @@ function handleInput(e) {
 /* EVENT LISTENERS */
 
 function setupAuthEventListeners() {
-  // Tab switching
+  // Tab switching - fixed to properly toggle between forms
   loginTab.addEventListener("click", (e) => {
     e.preventDefault();
     loginTab.classList.add("active");
     signupTab.classList.remove("active");
-    loginForm.classList.add("active");
-    signupForm.classList.remove("active");
+    loginForm.style.display = "flex";
+    signupForm.style.display = "none";
     loginError.textContent = "";
   });
 
@@ -415,8 +415,8 @@ function setupAuthEventListeners() {
     e.preventDefault();
     signupTab.classList.add("active");
     loginTab.classList.remove("active");
-    signupForm.classList.add("active");
-    loginForm.classList.remove("active");
+    signupForm.style.display = "flex";
+    loginForm.style.display = "none";
     signupError.textContent = "";
   });
 
@@ -436,24 +436,31 @@ function setupAuthEventListeners() {
   });
 
   logoutBtn.addEventListener("click", handleLogout);
+
+  // Make sure inputs are focusable and work properly
+  [loginUsername, loginPassword, signupUsername, signupPassword, signupConfirmPassword].forEach(input => {
+    input.addEventListener("focus", () => {
+      gamePlaying = false;
+    });
+  });
 }
 
 function setupGameEventListeners() {
   // Mouse click
-  document.addEventListener("click", handleInput);
+  canvas.addEventListener("click", handleInput);
   
-  // Keyboard space
+  // Keyboard space - only when game is focused
   document.addEventListener("keydown", (e) => {
-    if (e.code === "Space" || e.key === " ") {
+    if ((e.code === "Space" || e.key === " ") && gameContainer.style.display === "block") {
       handleInput(e);
     }
   });
 
   // Touch controls for mobile
-  document.addEventListener("touchstart", handleInput, { passive: false });
+  canvas.addEventListener("touchstart", handleInput, { passive: false });
   
   // Prevent touchmove from scrolling during gameplay
-  document.addEventListener("touchmove", (e) => {
+  canvas.addEventListener("touchmove", (e) => {
     if (gamePlaying || isCountdownActive) {
       e.preventDefault();
     }
@@ -469,6 +476,10 @@ function setupGameEventListeners() {
 
 // Initialize the game
 function init() {
+  // Set initial form states
+  loginForm.style.display = "flex";
+  signupForm.style.display = "none";
+  
   setupAuthEventListeners();
   setupGameEventListeners();
   updateLeaderboard();
