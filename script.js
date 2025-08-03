@@ -1,108 +1,277 @@
+// Game elements
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
-const img = new Image();
-img.src = "https://i.ibb.co/Q9yv5Jk/flappy-bird-set.png";
+const bestScoreElement = document.getElementById('bestScore');
+const currentScoreElement = document.getElementById('currentScore');
+const gameOverElement = document.querySelector('.game-over');
+const finalScoreElement = document.getElementById('finalScore');
+const highScoreElement = document.getElementById('highScore');
+const restartBtn = document.querySelector('.restart-btn');
 
-// general settings
+// Game settings
 let gamePlaying = false;
-const gravity = .5;
+const gravity = 0.5;
 const speed = 6.2;
-const size = [51, 36];
+const size = [60, 60]; // Nami's size
 const jump = -11.5;
-const cTenth = (canvas.width / 10);
-
-let index = 0,
-    bestScore = 0, 
-    flight, 
-    flyHeight, 
-    currentScore, 
-    pipe;
-
-// pipe settings
+const cTenth = canvas.width / 10;
 const pipeWidth = 78;
 const pipeGap = 270;
-const pipeLoc = () => (Math.random() * ((canvas.height - (pipeGap + pipeWidth)) - pipeWidth)) + pipeWidth;
 
-const setup = () => {
+// Game state
+let index = 0;
+let bestScore = 0;
+let flight = 0;
+let flyHeight = 0;
+let currentScore = 0;
+let pipes = [];
+let animationFrameId = 0;
+
+// Background zoom settings
+const backgroundZoom = 1.8; // 1.8x zoom
+let bgImageLoaded = false;
+
+// Images
+const images = {
+  background: new Image(),
+  character: new Image(),
+  ground: new Image(),
+  obstacleTop: new Image(),
+  obstacleBottom: new Image()
+};
+
+// Set image sources with your new background
+images.background.src = 'https://i.ibb.co/rG8CyMH2/image.jpg';
+images.character.src = 'https://i.ibb.co/JRfc3j4P/image.jpg';
+images.ground.src = 'https://i.ibb.co/Z6CwhrRN/image.jpg';
+images.obstacleTop.src = 'https://i.ibb.co/Q9yv5Jk/flappy-bird-set.png';
+images.obstacleBottom.src = 'https://i.ibb.co/Q9yv5Jk/flappy-bird-set.png';
+
+// Sound effects
+const sounds = {
+  jump: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-quick-jump-arcade-game-239.mp3'),
+  score: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3'),
+  hit: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-arcade-retro-game-over-213.mp3')
+};
+
+// Set sound volume
+Object.values(sounds).forEach(sound => {
+  sound.volume = 0.3;
+});
+
+// Initialize game
+function setup() {
   currentScore = 0;
   flight = jump;
-
-  // set initial flyHeight (middle of screen - size of the bird)
   flyHeight = (canvas.height / 2) - (size[1] / 2);
-
-  // setup first 3 pipes
   pipes = Array(3).fill().map((a, i) => [canvas.width + (i * (pipeGap + pipeWidth)), pipeLoc()]);
+  updateScoreDisplay();
 }
 
-const render = () => {
-  // make the pipe and bird moving 
+// Calculate random pipe location
+function pipeLoc() {
+  return (Math.random() * ((canvas.height - (pipeGap + pipeWidth)) - pipeWidth)) + pipeWidth;
+}
+
+// Update score display
+function updateScoreDisplay() {
+  bestScoreElement.textContent = `Best: ${bestScore}`;
+  currentScoreElement.textContent = `Current: ${currentScore}`;
+}
+
+// Main game loop with zoomed background
+function render(timestamp) {
   index++;
-
-  // ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // background first part 
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height, -((index * (speed / 2)) % canvas.width) + canvas.width, 0, canvas.width, canvas.height);
-  // background second part
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height, -(index * (speed / 2)) % canvas.width, 0, canvas.width, canvas.height);
   
-  // pipe display
-  if (gamePlaying){
-    pipes.map(pipe => {
-      // pipe moving
-      pipe[0] -= speed;
-
-      // top pipe
-      ctx.drawImage(img, 432, 588 - pipe[1], pipeWidth, pipe[1], pipe[0], 0, pipeWidth, pipe[1]);
-      // bottom pipe
-      ctx.drawImage(img, 432 + pipeWidth, 108, pipeWidth, canvas.height - pipe[1] + pipeGap, pipe[0], pipe[1] + pipeGap, pipeWidth, canvas.height - pipe[1] + pipeGap);
-
-      // give 1 point & create new pipe
-      if(pipe[0] <= -pipeWidth){
-        currentScore++;
-        // check if it's the best score
-        bestScore = Math.max(bestScore, currentScore);
-        
-        // remove & create new pipe
-        pipes = [...pipes.slice(1), [pipes[pipes.length-1][0] + pipeGap + pipeWidth, pipeLoc()]];
-        console.log(pipes);
-      }
+  // Clear canvas
+  ctx.fillStyle = '#87CEEB';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Draw zoomed background (1.8x)
+  if (bgImageLoaded) {
+    const zoomedWidth = canvas.width * backgroundZoom;
+    const zoomedHeight = canvas.height * backgroundZoom;
+    const offsetX = (zoomedWidth - canvas.width) / 2;
+    const offsetY = (zoomedHeight - canvas.height) / 2;
     
-      // if hit the pipe, end
-      if ([
-        pipe[0] <= cTenth + size[0], 
-        pipe[0] + pipeWidth >= cTenth, 
-        pipe[1] > flyHeight || pipe[1] + pipeGap < flyHeight + size[1]
-      ].every(elem => elem)) {
-        gamePlaying = false;
-        setup();
-      }
-    })
+    // Calculate background positions with parallax effect
+    const bgPos1 = -((index * (speed / 3)) % zoomedWidth) + zoomedWidth;
+    const bgPos2 = -(index * (speed / 3)) % zoomedWidth;
+    
+    // Draw two instances of background for seamless scrolling
+    ctx.drawImage(
+      images.background,
+      0, 0, images.background.width, images.background.height,
+      bgPos1 - offsetX, -offsetY, zoomedWidth, zoomedHeight
+    );
+    ctx.drawImage(
+      images.background,
+      0, 0, images.background.width, images.background.height,
+      bgPos2 - offsetX, -offsetY, zoomedWidth, zoomedHeight
+    );
   }
-  // draw bird
+  
+  // Draw ground
+  ctx.drawImage(images.ground, 0, 0, canvas.width, 50, 0, canvas.height - 50, canvas.width, 50);
+  
   if (gamePlaying) {
-    ctx.drawImage(img, 432, Math.floor((index % 9) / 3) * size[1], ...size, cTenth, flyHeight, ...size);
+    // Update and draw pipes
+    pipes.forEach(pipe => {
+      pipe[0] -= speed;
+      
+      // Draw top pipe
+      ctx.drawImage(images.obstacleTop, 432, 588 - pipe[1], pipeWidth, pipe[1], pipe[0], 0, pipeWidth, pipe[1]);
+      
+      // Draw bottom pipe
+      ctx.drawImage(images.obstacleBottom, 432 + pipeWidth, 108, pipeWidth, canvas.height - pipe[1] + pipeGap, 
+                   pipe[0], pipe[1] + pipeGap, pipeWidth, canvas.height - pipe[1] + pipeGap);
+      
+      // Check if pipe passed
+      if (pipe[0] <= -pipeWidth) {
+        currentScore++;
+        if (currentScore % 5 === 0) {
+          sounds.score.currentTime = 0;
+          sounds.score.play();
+        }
+        bestScore = Math.max(bestScore, currentScore);
+        pipes = [...pipes.slice(1), [pipes[pipes.length-1][0] + pipeGap + pipeWidth, pipeLoc()]];
+      }
+      
+      // Collision detection
+      if (
+        pipe[0] <= cTenth + size[0] && 
+        pipe[0] + pipeWidth >= cTenth && 
+        (pipe[1] > flyHeight || pipe[1] + pipeGap < flyHeight + size[1])
+      ) {
+        gameOver();
+      }
+    });
+    
+    // Update and draw Nami
     flight += gravity;
-    flyHeight = Math.min(flyHeight + flight, canvas.height - size[1]);
+    flyHeight = Math.min(flyHeight + flight, canvas.height - size[1] - 50);
+    
+    ctx.save();
+    const rotation = Math.min(Math.max(flight * 3, -30), 30);
+    ctx.translate(cTenth + size[0] / 2, flyHeight + size[1] / 2);
+    ctx.rotate(rotation * Math.PI / 180);
+    ctx.drawImage(images.character, -size[0] / 2, -size[1] / 2, size[0], size[1]);
+    ctx.restore();
+    
+    // Ground collision
+    if (flyHeight >= canvas.height - size[1] - 50) {
+      gameOver();
+    }
   } else {
-    ctx.drawImage(img, 432, Math.floor((index % 9) / 3) * size[1], ...size, ((canvas.width / 2) - size[0] / 2), flyHeight, ...size);
-    flyHeight = (canvas.height / 2) - (size[1] / 2);
-      // text accueil
-    ctx.fillText(`Best score : ${bestScore}`, 85, 245);
-    ctx.fillText('Click to play', 90, 535);
-    ctx.font = "bold 30px courier";
+    // Draw idle Nami (center screen)
+    ctx.drawImage(images.character, (canvas.width / 2) - size[0] / 2, flyHeight, size[0], size[1]);
+    
+    // Draw start screen text with shadow
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = 5;
+    ctx.shadowOffsetY = 3;
+    
+    ctx.fillStyle = 'white';
+    ctx.font = "bold 30px 'Press Start 2P'";
+    ctx.textAlign = 'center';
+    ctx.fillText(`BEST: ${bestScore}`, canvas.width / 2, 245);
+    
+    ctx.fillStyle = '#ffd166';
+    ctx.font = "bold 24px 'Press Start 2P'";
+    ctx.fillText('TAP TO PLAY', canvas.width / 2, 535);
+    
+    // Reset shadow
+    ctx.shadowColor = 'transparent';
   }
-
-  document.getElementById('bestScore').innerHTML = `Best : ${bestScore}`;
-  document.getElementById('currentScore').innerHTML = `Current : ${currentScore}`;
-
-  // tell the browser to perform anim
-  window.requestAnimationFrame(render);
+  
+  // Update score display
+  updateScoreDisplay();
+  
+  // Continue animation loop
+  animationFrameId = window.requestAnimationFrame(render);
 }
 
-// launch setup
-setup();
-img.onload = render;
+// Game over function
+function gameOver() {
+  if (!gamePlaying) return;
+  
+  gamePlaying = false;
+  sounds.hit.play();
+  
+  // Show game over screen
+  finalScoreElement.textContent = `SCORE: ${currentScore}`;
+  highScoreElement.textContent = `BEST: ${bestScore}`;
+  gameOverElement.style.display = 'block';
+}
 
-// start game
-document.addEventListener('click', () => gamePlaying = true);
-window.onclick = () => flight = jump;
+// Start game function
+function startGame() {
+  if (gamePlaying) return;
+  
+  gamePlaying = true;
+  gameOverElement.style.display = 'none';
+  setup();
+  sounds.jump.play();
+}
+
+// Input handler
+function handleInput() {
+  if (gamePlaying) {
+    flight = jump;
+    sounds.jump.play();
+  } else {
+    startGame();
+  }
+}
+
+// Event listeners for all input types
+function setupEventListeners() {
+  // Mouse click
+  document.addEventListener('click', handleInput);
+  
+  // Keyboard space
+  document.addEventListener('keydown', (e) => {
+    if ((e.code === 'Space' || e.key === ' ')) {
+      e.preventDefault();
+      handleInput();
+    }
+  });
+
+  // Touch support
+  document.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    handleInput();
+  }, { passive: false });
+
+  document.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+  }, { passive: false });
+
+  // Restart button
+  restartBtn.addEventListener('click', startGame);
+  restartBtn.addEventListener('touchend', startGame);
+}
+
+// Initialize game when images load
+function init() {
+  let imagesLoaded = 0;
+  const totalImages = Object.keys(images).length;
+  
+  Object.values(images).forEach(img => {
+    img.onload = () => {
+      imagesLoaded++;
+      if (img === images.background) {
+        bgImageLoaded = true;
+      }
+      if (imagesLoaded === totalImages) {
+        setup();
+        setupEventListeners();
+        animationFrameId = window.requestAnimationFrame(render);
+      }
+    };
+    img.onerror = () => console.error('Error loading image:', img.src);
+  });
+}
+
+// Start the game
+init();
