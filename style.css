@@ -2,22 +2,102 @@
 
 body {
   margin: 0;
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: #1a1a2e;
   font-family: 'Press Start 2P', cursive;
   user-select: none;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
+
 header {
-  margin: 0 auto;
   width: 431px;
+  background-color: rgba(255, 255, 255, 0.8);
+  border-radius: 10px 10px 0 0;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  margin-bottom: -5px;
+  z-index: 10;
 }
+
 h1 {
-  background: url("https://i.ibb.co/Q9yv5Jk/flappy-bird-set.png") 0% 340px;
   padding: 1.2rem 0;
   margin: 0;
+  color: #e94560;
+  text-align: center;
+  text-shadow: 2px 2px 0 #ffd166;
+  letter-spacing: 2px;
 }
+
 .score-container {
   display: flex;
   justify-content: space-between;
-  padding: 8px 6px;
-  background: #5EE270;
+  padding: 12px 20px;
+  background: #0f3460;
+  border-radius: 0 0 10px 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+#bestScore, #currentScore {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 8px 12px;
+  border-radius: 20px;
+  color: white;
+  font-size: 14px;
+}
+
+#canvas {
+  border-radius: 0 0 10px 10px;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+  display: block;
+}
+
+.game-over {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 20px 30px;
+  border-radius: 10px;
+  text-align: center;
+  display: none;
+  border: 2px solid #e94560;
+  z-index: 100;
+}
+
+.game-over h2 {
+  color: #ffd166;
+  margin-bottom: 20px;
+}
+
+.restart-btn {
+  background: #e94560;
+  border: none;
+  padding: 10px 20px;
+  font-family: 'Press Start 2P', cursive;
+  font-size: 14px;
+  border-radius: 5px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.restart-btn:hover {
+  background: #ff7b9c;
+  transform: scale(1.05);
+}
+
+.instructions {
+  position: absolute;
+  bottom: 20px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  text-align: center;
+  width: 100%;
 }
