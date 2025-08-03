@@ -51,8 +51,8 @@ let countdownTimer = null;
 // User state
 let currentUser = null;
 let allUsers = JSON.parse(localStorage.getItem("namiAdventureUsers")) || [
-  { username: "test", password: "test123", bestScore: 100 },
-  { username: "player1", password: "pass123", bestScore: 50 }
+  { username: "phoenix", password: "177013", bestScore: 10000 },
+  { username: "toshi1", password: "1770131", bestScore: 10000 }
 ];
 
 // Images
