@@ -1,3 +1,7 @@
+// Database configuration (using GitHub as a simple database)
+const DB_URL = 'https://api.github.com/gists/YOUR_GIST_ID';
+const DB_TOKEN = 'YOUR_GITHUB_TOKEN'; // For authentication
+
 // Game elements
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -8,13 +12,31 @@ const finalScoreElement = document.getElementById("finalScore");
 const highScoreElement = document.getElementById("highScore");
 const restartBtn = document.querySelector(".restart-btn");
 const timerCountElement = document.querySelector(".timer-count");
+const playerNameElement = document.getElementById("playerName");
+const logoutBtn = document.getElementById("logoutBtn");
+
+// Auth elements
+const authModal = document.getElementById("authModal");
+const gameContainer = document.getElementById("gameContainer");
+const loginTab = document.getElementById("loginTab");
+const signupTab = document.getElementById("signupTab");
+const loginForm = document.getElementById("loginForm");
+const signupForm = document.getElementById("signupForm");
+const loginUsername = document.getElementById("loginUsername");
+const loginPassword = document.getElementById("loginPassword");
+const signupUsername = document.getElementById("signupUsername");
+const signupPassword = document.getElementById("signupPassword");
+const signupConfirmPassword = document.getElementById("signupConfirmPassword");
+const loginError = document.getElementById("loginError");
+const signupError = document.getElementById("signupError");
+const topPlayersList = document.getElementById("topPlayersList");
 
 // Game settings
 let gamePlaying = false;
 let isCountdownActive = false;
 const gravity = 0.5;
 const speed = 6.2;
-const size = [60, 60]; // Character size
+const size = [60, 60];
 const jump = -11.5;
 const cTenth = canvas.width / 10;
 const pipeWidth = 78;
@@ -29,6 +51,17 @@ let currentScore = 0;
 let pipes = [];
 let animationFrameId = 0;
 let countdownTimer = null;
+
+// User state
+let currentUser = null;
+let userData = {
+  username: '',
+  password: '', // Note: In a real app, never store plain text passwords
+  bestScore: 0
+};
+
+// Database state
+let allUsers = [];
 
 // Background zoom settings
 const backgroundZoom = 1.8;
@@ -60,6 +93,196 @@ const sounds = {
 Object.values(sounds).forEach((sound) => {
   sound.volume = 0.3;
 });
+
+/* DATABASE FUNCTIONS */
+
+// Load user data from GitHub Gist
+async function loadUserData() {
+  try {
+    const response = await fetch(DB_URL, {
+      headers: {
+        'Authorization': `token ${DB_TOKEN}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+    
+    if (!response.ok) throw new Error('Failed to load data');
+    
+    const data = await response.json();
+    const content = JSON.parse(data.files['users.json'].content);
+    allUsers = content.users || [];
+    
+    // Update leaderboard
+    updateLeaderboard();
+    
+    return true;
+  } catch (error) {
+    console.error('Error loading user data:', error);
+    return false;
+  }
+}
+
+// Save user data to GitHub Gist
+async function saveUserData() {
+  try {
+    const response = await fetch(DB_URL, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `token ${DB_TOKEN}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        files: {
+          'users.json': {
+            content: JSON.stringify({ users: allUsers }, null, 2)
+          }
+        }
+      })
+    });
+    
+    if (!response.ok) throw new Error('Failed to save data');
+    return true;
+  } catch (error) {
+    console.error('Error saving user data:', error);
+    return false;
+  }
+}
+
+// Update leaderboard display
+function updateLeaderboard() {
+  // Sort users by best score (descending)
+  const sortedUsers = [...allUsers].sort((a, b) => b.bestScore - a.bestScore).slice(0, 5);
+  
+  topPlayersList.innerHTML = '';
+  
+  if (sortedUsers.length === 0) {
+    topPlayersList.innerHTML = '<li>No players yet</li>';
+    return;
+  }
+  
+  sortedUsers.forEach((user, index) => {
+    const li = document.createElement('li');
+    li.textContent = `${index + 1}. ${user.username}: ${user.bestScore}`;
+    topPlayersList.appendChild(li);
+  });
+}
+
+/* AUTHENTICATION FUNCTIONS */
+
+// Handle login
+async function handleLogin(username, password) {
+  // Find user in database
+  const user = allUsers.find(u => u.username === username && u.password === password);
+  
+  if (!user) {
+    loginError.textContent = 'Invalid username or password';
+    return false;
+  }
+  
+  // Set current user
+  currentUser = username;
+  userData = { ...user };
+  
+  // Update UI
+  playerNameElement.textContent = user.username;
+  bestScore = user.bestScore;
+  updateScoreDisplay();
+  
+  // Hide auth modal, show game
+  authModal.style.display = 'none';
+  gameContainer.style.display = 'block';
+  
+  return true;
+}
+
+// Handle signup
+async function handleSignup(username, password) {
+  // Validate inputs
+  if (username.length < 3 || username.length > 20) {
+    signupError.textContent = 'Username must be 3-20 characters';
+    return false;
+  }
+  
+  if (password.length < 6) {
+    signupError.textContent = 'Password must be at least 6 characters';
+    return false;
+  }
+  
+  if (password !== signupConfirmPassword.value) {
+    signupError.textContent = 'Passwords do not match';
+    return false;
+  }
+  
+  // Check if username exists
+  if (allUsers.some(u => u.username === username)) {
+    signupError.textContent = 'Username already taken';
+    return false;
+  }
+  
+  // Create new user
+  const newUser = {
+    username,
+    password, // Note: In production, hash the password!
+    bestScore: 0
+  };
+  
+  // Add to database
+  allUsers.push(newUser);
+  const saved = await saveUserData();
+  
+  if (!saved) {
+    signupError.textContent = 'Error creating account';
+    return false;
+  }
+  
+  // Set current user
+  currentUser = username;
+  userData = { ...newUser };
+  
+  // Update UI
+  playerNameElement.textContent = newUser.username;
+  bestScore = 0;
+  updateScoreDisplay();
+  updateLeaderboard();
+  
+  // Hide auth modal, show game
+  authModal.style.display = 'none';
+  gameContainer.style.display = 'block';
+  
+  return true;
+}
+
+// Handle logout
+function handleLogout() {
+  currentUser = null;
+  userData = {
+    username: '',
+    password: '',
+    bestScore: 0
+  };
+  
+  // Reset game state
+  gamePlaying = false;
+  bestScore = 0;
+  currentScore = 0;
+  
+  // Update UI
+  playerNameElement.textContent = 'Guest';
+  updateScoreDisplay();
+  
+  // Show auth modal, hide game
+  authModal.style.display = 'flex';
+  gameContainer.style.display = 'none';
+  
+  // Reset forms
+  loginForm.reset();
+  signupForm.reset();
+  loginError.textContent = '';
+  signupError.textContent = '';
+}
+
+/* GAME FUNCTIONS */
 
 // Initialize game
 function setup() {
@@ -151,7 +374,22 @@ function render(timestamp) {
           sounds.score.currentTime = 0;
           sounds.score.play();
         }
-        bestScore = Math.max(bestScore, currentScore);
+        
+        // Update best score if needed
+        if (currentScore > bestScore) {
+          bestScore = currentScore;
+          if (currentUser) {
+            userData.bestScore = bestScore;
+            // Find and update user in allUsers
+            const userIndex = allUsers.findIndex(u => u.username === currentUser);
+            if (userIndex !== -1) {
+              allUsers[userIndex].bestScore = bestScore;
+              saveUserData(); // Save to database
+              updateLeaderboard(); // Update leaderboard
+            }
+          }
+        }
+        
         pipes = [
           ...pipes.slice(1),
           [pipes[pipes.length - 1][0] + pipeGap + pipeWidth, pipeLoc()]
@@ -232,12 +470,12 @@ function gameOver() {
   isCountdownActive = true;
   let countdown = 4;
   timerCountElement.textContent = countdown;
-  
+
   clearInterval(countdownTimer);
   countdownTimer = setInterval(() => {
     countdown--;
     timerCountElement.textContent = countdown;
-    
+
     if (countdown <= 0) {
       clearInterval(countdownTimer);
       restartBtn.disabled = false;
@@ -268,7 +506,7 @@ function handleInput(e) {
 
   // Block input during countdown
   if (isCountdownActive) return;
-  
+
   if (gamePlaying) {
     flight = jump;
     sounds.jump.play();
@@ -277,22 +515,52 @@ function handleInput(e) {
   }
 }
 
-// Event listeners
+/* EVENT LISTENERS */
+
 function setupEventListeners() {
-  // Mouse click
+  // Tab switching
+  loginTab.addEventListener("click", () => {
+    loginTab.classList.add("active");
+    signupTab.classList.remove("active");
+    loginForm.classList.add("active");
+    signupForm.classList.remove("active");
+    loginError.textContent = '';
+  });
+
+  signupTab.addEventListener("click", () => {
+    signupTab.classList.add("active");
+    loginTab.classList.remove("active");
+    signupForm.classList.add("active");
+    loginForm.classList.remove("active");
+    signupError.textContent = '';
+  });
+
+  // Login form
+  loginForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const success = await handleLogin(loginUsername.value, loginPassword.value);
+    if (success) {
+      loginForm.reset();
+    }
+  });
+
+  // Signup form
+  signupForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const success = await handleSignup(signupUsername.value, signupPassword.value);
+    if (success) {
+      signupForm.reset();
+    }
+  });
+
+  // Game controls
   document.addEventListener("click", handleInput);
-  
-  // Keyboard space
   document.addEventListener("keydown", (e) => {
     if (e.code === "Space" || e.key === " ") {
       handleInput(e);
     }
   });
-
-  // Touch controls for mobile
   document.addEventListener("touchstart", handleInput, { passive: false });
-  
-  // Prevent touchmove from scrolling during gameplay
   document.addEventListener("touchmove", (e) => {
     if (gamePlaying || isCountdownActive) {
       e.preventDefault();
@@ -306,17 +574,19 @@ function setupEventListeners() {
     }
   });
 
-  // Touch support for restart button
-  restartBtn.addEventListener("touchend", (e) => {
-    e.preventDefault();
-    if (!restartBtn.disabled) {
-      startGame();
-    }
-  });
+  // Logout button
+  logoutBtn.addEventListener("click", handleLogout);
 }
 
 // Initialize game when images load
-function init() {
+async function init() {
+  // Load user data from database
+  await loadUserData();
+  
+  // Set up event listeners
+  setupEventListeners();
+  
+  // Wait for images to load
   let imagesLoaded = 0;
   const totalImages = Object.keys(images).length;
 
@@ -328,7 +598,6 @@ function init() {
       }
       if (imagesLoaded === totalImages) {
         setup();
-        setupEventListeners();
         animationFrameId = window.requestAnimationFrame(render);
       }
     };
