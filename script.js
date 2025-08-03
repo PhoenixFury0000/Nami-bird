@@ -50,7 +50,7 @@ const images = {
 };
 
 // Set image sources
-images.background.src = 'https://github.com/PhoenixFury0000/Nami-bird/blob/main/Picsart_25-08-03_03-20-38-798.png';
+images.background.src = 'Picsart_25-08-03_03-20-38-798.png';
 images.character.src = 'assets/character.png';
 images.ground.src = 'assets/ground.png';
 images.obstacle1.src = 'assets/ship1.png';
