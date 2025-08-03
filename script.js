@@ -1,7 +1,3 @@
-// Database configuration (using GitHub as a simple database)
-const DB_URL = 'https://api.github.com/gists/YOUR_GIST_ID';
-const DB_TOKEN = 'YOUR_GITHUB_TOKEN'; // For authentication
-
 // Game elements
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -54,18 +50,10 @@ let countdownTimer = null;
 
 // User state
 let currentUser = null;
-let userData = {
-  username: '',
-  password: '', // Note: In a real app, never store plain text passwords
-  bestScore: 0
-};
-
-// Database state
-let allUsers = [];
-
-// Background zoom settings
-const backgroundZoom = 1.8;
-let bgImageLoaded = false;
+let allUsers = JSON.parse(localStorage.getItem("namiAdventureUsers")) || [
+  { username: "test", password: "test123", bestScore: 100 },
+  { username: "player1", password: "pass123", bestScore: 50 }
+];
 
 // Images
 const images = {
@@ -94,197 +82,105 @@ Object.values(sounds).forEach((sound) => {
   sound.volume = 0.3;
 });
 
-/* DATABASE FUNCTIONS */
-
-// Load user data from GitHub Gist
-async function loadUserData() {
-  try {
-    const response = await fetch(DB_URL, {
-      headers: {
-        'Authorization': `token ${DB_TOKEN}`,
-        'Accept': 'application/vnd.github.v3+json'
-      }
-    });
-    
-    if (!response.ok) throw new Error('Failed to load data');
-    
-    const data = await response.json();
-    const content = JSON.parse(data.files['users.json'].content);
-    allUsers = content.users || [];
-    
-    // Update leaderboard
-    updateLeaderboard();
-    
-    return true;
-  } catch (error) {
-    console.error('Error loading user data:', error);
-    return false;
-  }
-}
-
-// Save user data to GitHub Gist
-async function saveUserData() {
-  try {
-    const response = await fetch(DB_URL, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `token ${DB_TOKEN}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        files: {
-          'users.json': {
-            content: JSON.stringify({ users: allUsers }, null, 2)
-          }
-        }
-      })
-    });
-    
-    if (!response.ok) throw new Error('Failed to save data');
-    return true;
-  } catch (error) {
-    console.error('Error saving user data:', error);
-    return false;
-  }
-}
-
-// Update leaderboard display
-function updateLeaderboard() {
-  // Sort users by best score (descending)
-  const sortedUsers = [...allUsers].sort((a, b) => b.bestScore - a.bestScore).slice(0, 5);
-  
-  topPlayersList.innerHTML = '';
-  
-  if (sortedUsers.length === 0) {
-    topPlayersList.innerHTML = '<li>No players yet</li>';
-    return;
-  }
-  
-  sortedUsers.forEach((user, index) => {
-    const li = document.createElement('li');
-    li.textContent = `${index + 1}. ${user.username}: ${user.bestScore}`;
-    topPlayersList.appendChild(li);
-  });
-}
-
 /* AUTHENTICATION FUNCTIONS */
 
-// Handle login
-async function handleLogin(username, password) {
-  // Find user in database
+function saveUsersToLocalStorage() {
+  localStorage.setItem("namiAdventureUsers", JSON.stringify(allUsers));
+}
+
+function handleLogin(username, password) {
+  loginError.textContent = "";
+  
+  if (!username || !password) {
+    loginError.textContent = "Please enter both fields";
+    return false;
+  }
+
   const user = allUsers.find(u => u.username === username && u.password === password);
   
   if (!user) {
-    loginError.textContent = 'Invalid username or password';
+    loginError.textContent = "Invalid username or password";
     return false;
   }
-  
-  // Set current user
-  currentUser = username;
-  userData = { ...user };
-  
-  // Update UI
-  playerNameElement.textContent = user.username;
+
+  currentUser = user;
   bestScore = user.bestScore;
-  updateScoreDisplay();
+  playerNameElement.textContent = user.username;
   
-  // Hide auth modal, show game
-  authModal.style.display = 'none';
-  gameContainer.style.display = 'block';
+  authModal.style.display = "none";
+  gameContainer.style.display = "block";
   
   return true;
 }
 
-// Handle signup
-async function handleSignup(username, password) {
-  // Validate inputs
-  if (username.length < 3 || username.length > 20) {
-    signupError.textContent = 'Username must be 3-20 characters';
+function handleSignup(username, password, confirmPassword) {
+  signupError.textContent = "";
+  
+  if (!username || !password || !confirmPassword) {
+    signupError.textContent = "Please fill all fields";
     return false;
   }
-  
+
+  if (password !== confirmPassword) {
+    signupError.textContent = "Passwords don't match";
+    return false;
+  }
+
+  if (username.length < 3) {
+    signupError.textContent = "Username too short (min 3 chars)";
+    return false;
+  }
+
   if (password.length < 6) {
-    signupError.textContent = 'Password must be at least 6 characters';
+    signupError.textContent = "Password too short (min 6 chars)";
     return false;
   }
-  
-  if (password !== signupConfirmPassword.value) {
-    signupError.textContent = 'Passwords do not match';
-    return false;
-  }
-  
-  // Check if username exists
+
   if (allUsers.some(u => u.username === username)) {
-    signupError.textContent = 'Username already taken';
+    signupError.textContent = "Username already exists";
     return false;
   }
-  
-  // Create new user
+
   const newUser = {
     username,
-    password, // Note: In production, hash the password!
+    password,
     bestScore: 0
   };
-  
-  // Add to database
+
   allUsers.push(newUser);
-  const saved = await saveUserData();
-  
-  if (!saved) {
-    signupError.textContent = 'Error creating account';
-    return false;
-  }
-  
-  // Set current user
-  currentUser = username;
-  userData = { ...newUser };
-  
-  // Update UI
-  playerNameElement.textContent = newUser.username;
+  saveUsersToLocalStorage();
+  currentUser = newUser;
   bestScore = 0;
-  updateScoreDisplay();
+  playerNameElement.textContent = newUser.username;
   updateLeaderboard();
-  
-  // Hide auth modal, show game
-  authModal.style.display = 'none';
-  gameContainer.style.display = 'block';
-  
+
+  authModal.style.display = "none";
+  gameContainer.style.display = "block";
+
   return true;
 }
 
-// Handle logout
 function handleLogout() {
   currentUser = null;
-  userData = {
-    username: '',
-    password: '',
-    bestScore: 0
-  };
-  
-  // Reset game state
   gamePlaying = false;
-  bestScore = 0;
-  currentScore = 0;
-  
-  // Update UI
-  playerNameElement.textContent = 'Guest';
-  updateScoreDisplay();
-  
-  // Show auth modal, hide game
-  authModal.style.display = 'flex';
-  gameContainer.style.display = 'none';
-  
-  // Reset forms
+  playerNameElement.textContent = "Guest";
+  authModal.style.display = "flex";
+  gameContainer.style.display = "none";
   loginForm.reset();
   signupForm.reset();
-  loginError.textContent = '';
-  signupError.textContent = '';
+  loginError.textContent = "";
+  signupError.textContent = "";
+}
+
+function updateLeaderboard() {
+  const sortedUsers = [...allUsers].sort((a, b) => b.bestScore - a.bestScore).slice(0, 5);
+  topPlayersList.innerHTML = sortedUsers.map(user => 
+    `<li>${user.username}: ${user.bestScore}</li>`
+  ).join("");
 }
 
 /* GAME FUNCTIONS */
 
-// Initialize game
 function setup() {
   currentScore = 0;
   flight = jump;
@@ -296,7 +192,6 @@ function setup() {
   updateScoreDisplay();
 }
 
-// Calculate random pipe location
 function pipeLoc() {
   return (
     Math.random() * (canvas.height - (pipeGap + pipeWidth) - pipeWidth) +
@@ -304,13 +199,11 @@ function pipeLoc() {
   );
 }
 
-// Update score display
 function updateScoreDisplay() {
   bestScoreElement.textContent = `Best: ${bestScore}`;
   currentScoreElement.textContent = `Current: ${currentScore}`;
 }
 
-// Main game loop
 function render(timestamp) {
   index++;
 
@@ -319,27 +212,25 @@ function render(timestamp) {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   // Draw zoomed background
-  if (bgImageLoaded) {
-    const zoomedWidth = canvas.width * backgroundZoom;
-    const zoomedHeight = canvas.height * backgroundZoom;
-    const offsetX = (zoomedWidth - canvas.width) / 2;
-    const offsetY = (zoomedHeight - canvas.height) / 2;
+  const zoomedWidth = canvas.width * 1.8;
+  const zoomedHeight = canvas.height * 1.8;
+  const offsetX = (zoomedWidth - canvas.width) / 2;
+  const offsetY = (zoomedHeight - canvas.height) / 2;
 
-    const bgPos1 = -((index * (speed / 3)) % zoomedWidth) + zoomedWidth;
-    const bgPos2 = -(index * (speed / 3)) % zoomedWidth;
+  const bgPos1 = -((index * (speed / 3)) % zoomedWidth) + zoomedWidth;
+  const bgPos2 = -(index * (speed / 3)) % zoomedWidth;
 
-    ctx.drawImage(
-      images.background,
-      0, 0, images.background.width, images.background.height,
-      bgPos1 - offsetX, -offsetY, zoomedWidth, zoomedHeight
-    );
+  ctx.drawImage(
+    images.background,
+    0, 0, images.background.width, images.background.height,
+    bgPos1 - offsetX, -offsetY, zoomedWidth, zoomedHeight
+  );
 
-    ctx.drawImage(
-      images.background,
-      0, 0, images.background.width, images.background.height,
-      bgPos2 - offsetX, -offsetY, zoomedWidth, zoomedHeight
-    );
-  }
+  ctx.drawImage(
+    images.background,
+    0, 0, images.background.width, images.background.height,
+    bgPos2 - offsetX, -offsetY, zoomedWidth, zoomedHeight
+  );
 
   // Draw ground
   ctx.drawImage(
@@ -379,14 +270,9 @@ function render(timestamp) {
         if (currentScore > bestScore) {
           bestScore = currentScore;
           if (currentUser) {
-            userData.bestScore = bestScore;
-            // Find and update user in allUsers
-            const userIndex = allUsers.findIndex(u => u.username === currentUser);
-            if (userIndex !== -1) {
-              allUsers[userIndex].bestScore = bestScore;
-              saveUserData(); // Save to database
-              updateLeaderboard(); // Update leaderboard
-            }
+            currentUser.bestScore = bestScore;
+            saveUsersToLocalStorage();
+            updateLeaderboard();
           }
         }
         
@@ -451,7 +337,6 @@ function render(timestamp) {
   animationFrameId = window.requestAnimationFrame(render);
 }
 
-// Game over function
 function gameOver() {
   if (!gamePlaying) return;
 
@@ -486,7 +371,6 @@ function gameOver() {
   }, 1000);
 }
 
-// Start game function
 function startGame() {
   if (gamePlaying || isCountdownActive) return;
 
@@ -497,7 +381,6 @@ function startGame() {
   sounds.jump.play();
 }
 
-// Input handler
 function handleInput(e) {
   // Prevent default behavior for touch events and spacebar
   if (e.type === 'touchstart' || (e.type === 'keydown' && e.code === 'Space')) {
@@ -517,50 +400,59 @@ function handleInput(e) {
 
 /* EVENT LISTENERS */
 
-function setupEventListeners() {
+function setupAuthEventListeners() {
   // Tab switching
-  loginTab.addEventListener("click", () => {
+  loginTab.addEventListener("click", (e) => {
+    e.preventDefault();
     loginTab.classList.add("active");
     signupTab.classList.remove("active");
     loginForm.classList.add("active");
     signupForm.classList.remove("active");
-    loginError.textContent = '';
+    loginError.textContent = "";
   });
 
-  signupTab.addEventListener("click", () => {
+  signupTab.addEventListener("click", (e) => {
+    e.preventDefault();
     signupTab.classList.add("active");
     loginTab.classList.remove("active");
     signupForm.classList.add("active");
     loginForm.classList.remove("active");
-    signupError.textContent = '';
+    signupError.textContent = "";
   });
 
-  // Login form
-  loginForm.addEventListener("submit", async (e) => {
+  // Form submissions
+  loginForm.addEventListener("submit", (e) => {
     e.preventDefault();
-    const success = await handleLogin(loginUsername.value, loginPassword.value);
-    if (success) {
-      loginForm.reset();
-    }
+    handleLogin(loginUsername.value, loginPassword.value);
   });
 
-  // Signup form
-  signupForm.addEventListener("submit", async (e) => {
+  signupForm.addEventListener("submit", (e) => {
     e.preventDefault();
-    const success = await handleSignup(signupUsername.value, signupPassword.value);
-    if (success) {
-      signupForm.reset();
-    }
+    handleSignup(
+      signupUsername.value, 
+      signupPassword.value, 
+      signupConfirmPassword.value
+    );
   });
 
-  // Game controls
+  logoutBtn.addEventListener("click", handleLogout);
+}
+
+function setupGameEventListeners() {
+  // Mouse click
   document.addEventListener("click", handleInput);
+  
+  // Keyboard space
   document.addEventListener("keydown", (e) => {
     if (e.code === "Space" || e.key === " ") {
       handleInput(e);
     }
   });
+
+  // Touch controls for mobile
   document.addEventListener("touchstart", handleInput, { passive: false });
+  
+  // Prevent touchmove from scrolling during gameplay
   document.addEventListener("touchmove", (e) => {
     if (gamePlaying || isCountdownActive) {
       e.preventDefault();
@@ -573,19 +465,14 @@ function setupEventListeners() {
       startGame();
     }
   });
-
-  // Logout button
-  logoutBtn.addEventListener("click", handleLogout);
 }
 
-// Initialize game when images load
-async function init() {
-  // Load user data from database
-  await loadUserData();
-  
-  // Set up event listeners
-  setupEventListeners();
-  
+// Initialize the game
+function init() {
+  setupAuthEventListeners();
+  setupGameEventListeners();
+  updateLeaderboard();
+
   // Wait for images to load
   let imagesLoaded = 0;
   const totalImages = Object.keys(images).length;
@@ -593,9 +480,6 @@ async function init() {
   Object.values(images).forEach((img) => {
     img.onload = () => {
       imagesLoaded++;
-      if (img === images.background) {
-        bgImageLoaded = true;
-      }
       if (imagesLoaded === totalImages) {
         setup();
         animationFrameId = window.requestAnimationFrame(render);
