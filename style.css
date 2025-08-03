@@ -1,3 +1,4 @@
+/* Base Styles */
 body {
   margin: 0;
   display: flex;
@@ -11,10 +12,134 @@ body {
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+  color: white;
+}
+
+/* Auth Modal Styles */
+.auth-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.auth-container {
+  background-color: #0f3460;
+  padding: 2rem;
+  border-radius: 10px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+  text-align: center;
+}
+
+.auth-container h2 {
+  color: #ffd166;
+  margin-bottom: 1.5rem;
+  text-shadow: 2px 2px 0 #e94560;
+}
+
+.auth-tabs {
+  display: flex;
+  margin-bottom: 1rem;
+  justify-content: center;
+}
+
+.auth-tab {
+  background: none;
+  border: none;
+  color: white;
+  padding: 0.5rem 1rem;
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.8rem;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+}
+
+.auth-tab.active {
+  border-bottom: 3px solid #e94560;
+  color: #ffd166;
+}
+
+.auth-form {
+  display: none;
+  flex-direction: column;
+}
+
+.auth-form.active {
+  display: flex;
+}
+
+.auth-form input {
+  margin: 0.5rem 0;
+  padding: 0.8rem;
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.7rem;
+  border: none;
+  border-radius: 5px;
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+.auth-form button {
+  margin-top: 1rem;
+  padding: 0.8rem;
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.8rem;
+  background-color: #e94560;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.auth-form button:hover {
+  background-color: #ff7b9c;
+  transform: scale(1.05);
+}
+
+.auth-error {
+  color: #ff6b6b;
+  font-size: 0.7rem;
+  margin-top: 0.5rem;
+  min-height: 1rem;
+}
+
+.leaderboard-preview {
+  margin-top: 2rem;
+  border-top: 2px solid #e94560;
+  padding-top: 1rem;
+}
+
+.leaderboard-preview h3 {
+  color: #ffd166;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.leaderboard-preview ol {
+  text-align: left;
+  padding-left: 1.5rem;
+  font-size: 0.7rem;
+  line-height: 1.5;
+}
+
+/* Game Container Styles */
+.game-container {
+  display: none;
+  width: 100%;
+  max-width: 431px;
+  position: relative;
 }
 
 header {
-  width: 431px;
+  width: 100%;
   background-color: rgba(255, 255, 255, 0.8);
   border-radius: 10px 10px 0 0;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
@@ -29,6 +154,7 @@ h1 {
   text-align: center;
   text-shadow: 2px 2px 0 #ffd166;
   letter-spacing: 2px;
+  font-size: 1.5rem;
 }
 
 .score-container {
@@ -40,18 +166,19 @@ h1 {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-#bestScore, #currentScore {
+#bestScore, #currentScore, #playerName {
   background: rgba(255, 255, 255, 0.2);
   padding: 8px 12px;
   border-radius: 20px;
   color: white;
-  font-size: 14px;
+  font-size: 0.7rem;
 }
 
 #canvas {
   border-radius: 0 0 10px 10px;
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
   display: block;
+  width: 100%;
 }
 
 .game-over {
@@ -67,11 +194,14 @@ h1 {
   display: none;
   border: 2px solid #e94560;
   z-index: 100;
+  width: 80%;
+  max-width: 300px;
 }
 
 .game-over h2 {
   color: #ffd166;
   margin-bottom: 20px;
+  font-size: 1.2rem;
 }
 
 .restart-btn {
@@ -79,7 +209,7 @@ h1 {
   border: none;
   padding: 10px 20px;
   font-family: "Press Start 2P", cursive;
-  font-size: 14px;
+  font-size: 0.7rem;
   border-radius: 5px;
   color: white;
   cursor: pointer;
@@ -100,7 +230,7 @@ h1 {
 
 .timer-text {
   margin-top: 10px;
-  font-size: 12px;
+  font-size: 0.7rem;
   color: #ccc;
 }
 
@@ -108,7 +238,43 @@ h1 {
   position: absolute;
   bottom: 20px;
   color: rgba(255, 255, 255, 0.7);
-  font-size: 12px;
+  font-size: 0.7rem;
   text-align: center;
   width: 100%;
+}
+
+.logout-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
+  padding: 5px 10px;
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.6rem;
+  border-radius: 5px;
+  color: white;
+  cursor: pointer;
+  z-index: 101;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 500px) {
+  h1 {
+    font-size: 1.2rem;
+    padding: 0.8rem 0;
+  }
+  
+  .auth-container {
+    padding: 1.5rem;
+  }
+  
+  .auth-tab {
+    font-size: 0.7rem;
+  }
+  
+  .auth-form input, .auth-form button {
+    padding: 0.6rem;
+    font-size: 0.6rem;
+  }
 }
