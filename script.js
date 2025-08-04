@@ -66,7 +66,7 @@ const images = {
 
 images.background.src = "https://i.ibb.co/FLrZmZ0Q/image.jpg";
 images.character.src = "https://i.ibb.co/JRfc3j4P/image.jpg";
-images.ground.src = "https://i.ibb.co/Z6CwhrRN/image.jpg";
+images.ground.src = "https://i.ibb.co/ZpW66gJF/image.jpg";
 images.obstacleTop.src = "https://i.ibb.co/Q9yv5Jk/flappy-bird-set.png";
 images.obstacleBottom.src = "https://i.ibb.co/Q9yv5Jk/flappy-bird-set.png";
 
