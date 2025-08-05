@@ -25,9 +25,10 @@ const signupPassword = document.getElementById("signupPassword");
 const signupConfirmPassword = document.getElementById("signupConfirmPassword");
 const loginError = document.getElementById("loginError");
 const signupError = document.getElementById("signupError");
+const loginMessage = document.getElementById("loginMessage");
 const topPlayersList = document.getElementById("topPlayersList");
 
-// Set canvas size based on device
+// Set canvas size
 function resizeCanvas() {
   const maxWidth = 430;
   const maxHeight = 600;
@@ -36,7 +37,6 @@ function resizeCanvas() {
   let width = Math.min(window.innerWidth, maxWidth);
   let height = width / ratio;
   
-  // Adjust for very tall screens
   if (height > window.innerHeight * 0.9) {
     height = window.innerHeight * 0.9;
     width = height * ratio;
@@ -45,7 +45,6 @@ function resizeCanvas() {
   canvas.width = width;
   canvas.height = height;
   
-  // Recalculate game elements when resized
   if (gamePlaying) {
     flyHeight = Math.min(flyHeight, canvas.height - birdHeight);
   } else {
@@ -85,7 +84,7 @@ let allUsers = JSON.parse(localStorage.getItem("flappyBirdUsers")) || [];
 
 // Images
 const birdImg = new Image();
-birdImg.src = "https://i.imgur.com/QNbkV3q.png"; // Simple bird sprite
+birdImg.src = "https://i.imgur.com/QNbkV3q.png";
 
 // Sound effects
 const sounds = {
@@ -107,16 +106,22 @@ function saveUsersToLocalStorage() {
 
 function handleLogin(username, password) {
   loginError.textContent = "";
+  loginMessage.textContent = "";
 
   if (!username || !password) {
     loginError.textContent = "Please enter both fields";
     return false;
   }
 
-  const user = allUsers.find(u => u.username === username && u.password === password);
+  const user = allUsers.find(u => u.username === username);
 
   if (!user) {
-    loginError.textContent = "Invalid username or password";
+    loginMessage.textContent = "Username not found. Please sign up.";
+    return false;
+  }
+
+  if (user.password !== password) {
+    loginError.textContent = "Incorrect password";
     return false;
   }
 
@@ -189,6 +194,7 @@ function handleLogout() {
   signupForm.reset();
   loginError.textContent = "";
   signupError.textContent = "";
+  loginMessage.textContent = "";
 }
 
 function updateLeaderboard() {
@@ -235,13 +241,10 @@ function updatePipeColor() {
 
 function drawBird(x, y) {
   ctx.save();
-  
-  // Add slight rotation based on flight
   const rotation = Math.min(Math.max(flight * 3, -25), 25);
   ctx.translate(x + birdWidth / 2, y + birdHeight / 2);
   ctx.rotate(rotation * Math.PI / 180);
   
-  // Draw bird with wing animation
   const wingFrame = Math.floor(index / 5) % 2;
   ctx.drawImage(
     birdImg,
@@ -267,7 +270,7 @@ function render() {
   ctx.fillStyle = skyGradient;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Draw clouds (simple pattern)
+  // Draw clouds
   ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
   for (let i = 0; i < 5; i++) {
     const x = (backgroundOffset + i * 200) % (canvas.width + 200) - 100;
@@ -276,14 +279,13 @@ function render() {
   }
 
   if (gamePlaying) {
-    // Update pipe color based on score
     updatePipeColor();
 
     // Update and draw pipes
     pipes.forEach((pipe) => {
       pipe[0] -= speed;
 
-      // Draw top pipe with gradient
+      // Draw top pipe
       const topPipeGradient = ctx.createLinearGradient(pipe[0], 0, pipe[0] + pipeWidth, 0);
       topPipeGradient.addColorStop(0, pipeColor);
       topPipeGradient.addColorStop(1, lightenColor(pipeColor, 20));
@@ -293,7 +295,7 @@ function render() {
       ctx.lineWidth = 2;
       ctx.strokeRect(pipe[0], 0, pipeWidth, pipe[1]);
 
-      // Draw bottom pipe with gradient
+      // Draw bottom pipe
       const bottomPipeGradient = ctx.createLinearGradient(pipe[0], pipe[1] + pipeGap, pipe[0] + pipeWidth, pipe[1] + pipeGap);
       bottomPipeGradient.addColorStop(0, pipeColor);
       bottomPipeGradient.addColorStop(1, lightenColor(pipeColor, 20));
@@ -311,7 +313,6 @@ function render() {
           sounds.score.play();
         }
 
-        // Update best score if needed
         if (currentScore > bestScore) {
           bestScore = currentScore;
           if (currentUser) {
@@ -359,11 +360,11 @@ function render() {
       gameOver();
     }
   } else {
-    // Draw idle bird (center screen) with animation
+    // Draw idle bird
     flyHeight = canvas.height / 2 - birdHeight / 2;
     drawBird(canvas.width / 2 - birdWidth / 2, flyHeight + Math.sin(index * 0.05) * 5);
 
-    // Draw start screen text
+    // Draw start screen
     ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
     ctx.fillRect(canvas.width / 2 - 120, canvas.height / 2 - 60, 240, 120);
     
@@ -412,12 +413,10 @@ function gameOver() {
   document.body.classList.remove("no-scroll");
   sounds.hit.play();
 
-  // Show game over screen
   finalScoreElement.textContent = `SCORE: ${currentScore}`;
   highScoreElement.textContent = `BEST: ${bestScore}`;
   gameOverElement.style.display = "block";
 
-  // Disable button and start countdown
   restartBtn.disabled = true;
   restartBtn.classList.remove("active");
   isCountdownActive = true;
@@ -450,12 +449,10 @@ function startGame() {
 }
 
 function handleInput(e) {
-  // Prevent default behavior for touch events and spacebar
   if (e.type === 'touchstart' || (e.type === 'keydown' && e.code === 'Space')) {
     e.preventDefault();
   }
 
-  // Block input during countdown
   if (isCountdownActive) return;
 
   if (gamePlaying) {
@@ -469,6 +466,7 @@ function handleInput(e) {
 /* EVENT LISTENERS */
 
 function setupAuthEventListeners() {
+  // Tab switching
   loginTab.addEventListener("click", (e) => {
     e.preventDefault();
     loginTab.classList.add("active");
@@ -476,6 +474,7 @@ function setupAuthEventListeners() {
     loginForm.style.display = "flex";
     signupForm.style.display = "none";
     loginError.textContent = "";
+    loginMessage.textContent = "";
   });
 
   signupTab.addEventListener("click", (e) => {
@@ -487,6 +486,7 @@ function setupAuthEventListeners() {
     signupError.textContent = "";
   });
 
+  // Form submissions
   loginForm.addEventListener("submit", (e) => {
     e.preventDefault();
     handleLogin(loginUsername.value, loginPassword.value);
@@ -503,6 +503,7 @@ function setupAuthEventListeners() {
 
   logoutBtn.addEventListener("click", handleLogout);
 
+  // Input focus handling
   [loginUsername, loginPassword, signupUsername, signupPassword, signupConfirmPassword].forEach(input => {
     input.addEventListener("focus", () => {
       gamePlaying = false;
@@ -521,7 +522,7 @@ function setupGameEventListeners() {
     }
   });
 
-  // Touch controls for mobile
+  // Touch controls
   canvas.addEventListener("touchstart", handleInput, { passive: false });
   canvas.addEventListener("touchmove", (e) => {
     if (gamePlaying || isCountdownActive) {
@@ -539,7 +540,6 @@ function setupGameEventListeners() {
 
 // Initialize the game
 function init() {
-  // Set initial form states
   loginForm.style.display = "flex";
   signupForm.style.display = "none";
 
@@ -547,7 +547,6 @@ function init() {
   setupGameEventListeners();
   updateLeaderboard();
 
-  // Start rendering
   birdImg.onload = () => {
     setup();
     animationFrameId = window.requestAnimationFrame(render);
