@@ -62,7 +62,7 @@ const gravity = 0.5;
 const speed = 6;
 const jump = -11;
 const pipeWidth = 80;
-const pipeGap = canvas.height * 0.3;
+let pipeGap = canvas.height * 0.3;
 const birdWidth = 50;
 const birdHeight = 35;
 
@@ -116,7 +116,7 @@ function handleLogin(username, password) {
   const user = allUsers.find(u => u.username === username);
 
   if (!user) {
-    loginMessage.textContent = "Username not found. Please sign up.";
+    loginMessage.textContent = "Username not found. Please sign up first!";
     return false;
   }
 
@@ -139,6 +139,7 @@ function handleLogin(username, password) {
 function handleSignup(username, password, confirmPassword) {
   signupError.textContent = "";
 
+  // Validate inputs
   if (!username || !password || !confirmPassword) {
     signupError.textContent = "Please fill all fields";
     return false;
@@ -150,12 +151,12 @@ function handleSignup(username, password, confirmPassword) {
   }
 
   if (username.length < 3) {
-    signupError.textContent = "Username too short (min 3 chars)";
+    signupError.textContent = "Username must be at least 3 characters";
     return false;
   }
 
   if (password.length < 6) {
-    signupError.textContent = "Password too short (min 6 chars)";
+    signupError.textContent = "Password must be at least 6 characters";
     return false;
   }
 
@@ -164,6 +165,7 @@ function handleSignup(username, password, confirmPassword) {
     return false;
   }
 
+  // Create new user
   const newUser = {
     username,
     password,
@@ -172,11 +174,14 @@ function handleSignup(username, password, confirmPassword) {
 
   allUsers.push(newUser);
   saveUsersToLocalStorage();
+  
+  // Log in the new user
   currentUser = newUser;
   bestScore = 0;
   playerNameElement.textContent = newUser.username;
   updateLeaderboard();
 
+  // Switch to game
   authModal.style.display = "none";
   gameContainer.style.display = "block";
   setup();
@@ -195,6 +200,12 @@ function handleLogout() {
   loginError.textContent = "";
   signupError.textContent = "";
   loginMessage.textContent = "";
+  
+  // Show login tab by default
+  loginTab.classList.add("active");
+  signupTab.classList.remove("active");
+  loginForm.style.display = "flex";
+  signupForm.style.display = "none";
 }
 
 function updateLeaderboard() {
@@ -215,6 +226,7 @@ function setup() {
   currentScore = 0;
   flight = jump;
   flyHeight = canvas.height / 2 - birdHeight / 2;
+  pipeGap = canvas.height * 0.3; // Update gap based on current canvas size
   pipes = Array(3)
     .fill()
     .map((a, i) => [canvas.width + i * (pipeGap + pipeWidth), pipeLoc()]);
@@ -466,9 +478,11 @@ function handleInput(e) {
 /* EVENT LISTENERS */
 
 function setupAuthEventListeners() {
-  // Tab switching
-  loginTab.addEventListener("click", (e) => {
+  // Tab switching - fixed to properly handle clicks
+  loginTab.addEventListener("click", function(e) {
     e.preventDefault();
+    if (this.classList.contains("active")) return;
+    
     loginTab.classList.add("active");
     signupTab.classList.remove("active");
     loginForm.style.display = "flex";
@@ -477,8 +491,10 @@ function setupAuthEventListeners() {
     loginMessage.textContent = "";
   });
 
-  signupTab.addEventListener("click", (e) => {
+  signupTab.addEventListener("click", function(e) {
     e.preventDefault();
+    if (this.classList.contains("active")) return;
+    
     signupTab.classList.add("active");
     loginTab.classList.remove("active");
     signupForm.style.display = "flex";
@@ -486,13 +502,13 @@ function setupAuthEventListeners() {
     signupError.textContent = "";
   });
 
-  // Form submissions
-  loginForm.addEventListener("submit", (e) => {
+  // Form submissions - fixed to properly handle submission
+  loginForm.addEventListener("submit", function(e) {
     e.preventDefault();
     handleLogin(loginUsername.value, loginPassword.value);
   });
 
-  signupForm.addEventListener("submit", (e) => {
+  signupForm.addEventListener("submit", function(e) {
     e.preventDefault();
     handleSignup(
       signupUsername.value, 
@@ -505,8 +521,12 @@ function setupAuthEventListeners() {
 
   // Input focus handling
   [loginUsername, loginPassword, signupUsername, signupPassword, signupConfirmPassword].forEach(input => {
-    input.addEventListener("focus", () => {
+    input.addEventListener("focus", function() {
       gamePlaying = false;
+      // Scroll into view on mobile
+      if (window.innerWidth <= 500) {
+        this.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
     });
   });
 }
@@ -522,17 +542,21 @@ function setupGameEventListeners() {
     }
   });
 
-  // Touch controls
-  canvas.addEventListener("touchstart", handleInput, { passive: false });
-  canvas.addEventListener("touchmove", (e) => {
+  // Enhanced touch controls
+  canvas.addEventListener("touchstart", function(e) {
+    e.preventDefault();
+    handleInput(e);
+  }, { passive: false });
+
+  canvas.addEventListener("touchmove", function(e) {
     if (gamePlaying || isCountdownActive) {
       e.preventDefault();
     }
   }, { passive: false });
 
   // Restart button
-  restartBtn.addEventListener("click", () => {
-    if (!restartBtn.disabled) {
+  restartBtn.addEventListener("click", function() {
+    if (!this.disabled) {
       startGame();
     }
   });
@@ -540,18 +564,29 @@ function setupGameEventListeners() {
 
 // Initialize the game
 function init() {
+  // Set initial form states
+  loginTab.classList.add("active");
+  signupTab.classList.remove("active");
   loginForm.style.display = "flex";
   signupForm.style.display = "none";
 
+  // Setup event listeners
   setupAuthEventListeners();
   setupGameEventListeners();
   updateLeaderboard();
 
-  birdImg.onload = () => {
+  // Load game assets
+  birdImg.onload = function() {
     setup();
     animationFrameId = window.requestAnimationFrame(render);
   };
-  birdImg.onerror = () => console.error("Error loading bird image");
+  birdImg.onerror = function() {
+    console.error("Error loading bird image");
+    // Fallback to rectangle if image fails to load
+    birdImg.onload = null;
+    setup();
+    animationFrameId = window.requestAnimationFrame(render);
+  };
 }
 
 // Start the game
