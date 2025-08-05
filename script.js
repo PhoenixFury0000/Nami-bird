@@ -1,4 +1,6 @@
-// Game elements
+
+
+// Game
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const bestScoreElement = document.getElementById("bestScore");
@@ -25,66 +27,50 @@ const signupPassword = document.getElementById("signupPassword");
 const signupConfirmPassword = document.getElementById("signupConfirmPassword");
 const loginError = document.getElementById("loginError");
 const signupError = document.getElementById("signupError");
-const loginMessage = document.getElementById("loginMessage");
 const topPlayersList = document.getElementById("topPlayersList");
-
-// Set canvas size
-function resizeCanvas() {
-  const maxWidth = 430;
-  const maxHeight = 600;
-  const ratio = maxWidth / maxHeight;
-  
-  let width = Math.min(window.innerWidth, maxWidth);
-  let height = width / ratio;
-  
-  if (height > window.innerHeight * 0.9) {
-    height = window.innerHeight * 0.9;
-    width = height * ratio;
-  }
-  
-  canvas.width = width;
-  canvas.height = height;
-  
-  if (gamePlaying) {
-    flyHeight = Math.min(flyHeight, canvas.height - birdHeight);
-  } else {
-    flyHeight = canvas.height / 2 - birdHeight / 2;
-  }
-}
-
-resizeCanvas();
-window.addEventListener('resize', resizeCanvas);
 
 // Game settings
 let gamePlaying = false;
 let isCountdownActive = false;
 const gravity = 0.5;
-const speed = 6;
-const jump = -11;
-const pipeWidth = 80;
-let pipeGap = canvas.height * 0.3;
-const birdWidth = 50;
-const birdHeight = 35;
+const speed = 6.2;
+const size = [60, 60];
+const jump = -11.5;
+const cTenth = canvas.width / 10;
+const pipeWidth = 78;
+const pipeGap = 270;
 
 // Game state
 let index = 0;
 let bestScore = 0;
 let flight = 0;
-let flyHeight = canvas.height / 2 - birdHeight / 2;
+let flyHeight = 0;
 let currentScore = 0;
 let pipes = [];
 let animationFrameId = 0;
 let countdownTimer = null;
-let pipeColor = '#e94560';
-let backgroundOffset = 0;
 
 // User state
 let currentUser = null;
-let allUsers = JSON.parse(localStorage.getItem("flappyBirdUsers")) || [];
+let allUsers = JSON.parse(localStorage.getItem("namiAdventureUsers")) || [
+  { username: "phoenix", password: "177013", bestScore: 10000 },
+  { username: "toshi1", password: "1770131", bestScore: 10000 }
+];
 
 // Images
-const birdImg = new Image();
-birdImg.src = "https://i.imgur.com/QNbkV3q.png";
+const images = {
+  background: new Image(),
+  character: new Image(),
+  ground: new Image(),
+  obstacleTop: new Image(),
+  obstacleBottom: new Image()
+};
+
+images.background.src = "https://i.ibb.co/FLrZmZ0Q/image.jpg";
+images.character.src = "https://i.ibb.co/JRfc3j4P/image.jpg";
+images.ground.src = "https://i.ibb.co/ZpW66gJF/image.jpg";
+images.obstacleTop.src = "https://i.ibb.co/Q9yv5Jk/flappy-bird-set.png";
+images.obstacleBottom.src = "https://i.ibb.co/Q9yv5Jk/flappy-bird-set.png";
 
 // Sound effects
 const sounds = {
@@ -101,37 +87,30 @@ Object.values(sounds).forEach((sound) => {
 /* AUTHENTICATION FUNCTIONS */
 
 function saveUsersToLocalStorage() {
-  localStorage.setItem("flappyBirdUsers", JSON.stringify(allUsers));
+  localStorage.setItem("namiAdventureUsers", JSON.stringify(allUsers));
 }
 
 function handleLogin(username, password) {
   loginError.textContent = "";
-  loginMessage.textContent = "";
 
   if (!username || !password) {
     loginError.textContent = "Please enter both fields";
     return false;
   }
 
-  const user = allUsers.find(u => u.username === username);
+  const user = allUsers.find(u => u.username === username && u.password === password);
 
   if (!user) {
-    loginMessage.textContent = "Username not found. Please sign up first!";
-    return false;
-  }
-
-  if (user.password !== password) {
-    loginError.textContent = "Incorrect password";
+    loginError.textContent = "Invalid username or password";
     return false;
   }
 
   currentUser = user;
-  bestScore = user.bestScore || 0;
+  bestScore = user.bestScore;
   playerNameElement.textContent = user.username;
 
   authModal.style.display = "none";
   gameContainer.style.display = "block";
-  setup();
 
   return true;
 }
@@ -139,7 +118,6 @@ function handleLogin(username, password) {
 function handleSignup(username, password, confirmPassword) {
   signupError.textContent = "";
 
-  // Validate inputs
   if (!username || !password || !confirmPassword) {
     signupError.textContent = "Please fill all fields";
     return false;
@@ -151,12 +129,12 @@ function handleSignup(username, password, confirmPassword) {
   }
 
   if (username.length < 3) {
-    signupError.textContent = "Username must be at least 3 characters";
+    signupError.textContent = "Username too short (min 3 chars)";
     return false;
   }
 
   if (password.length < 6) {
-    signupError.textContent = "Password must be at least 6 characters";
+    signupError.textContent = "Password too short (min 6 chars)";
     return false;
   }
 
@@ -165,7 +143,6 @@ function handleSignup(username, password, confirmPassword) {
     return false;
   }
 
-  // Create new user
   const newUser = {
     username,
     password,
@@ -174,17 +151,13 @@ function handleSignup(username, password, confirmPassword) {
 
   allUsers.push(newUser);
   saveUsersToLocalStorage();
-  
-  // Log in the new user
   currentUser = newUser;
   bestScore = 0;
   playerNameElement.textContent = newUser.username;
   updateLeaderboard();
 
-  // Switch to game
   authModal.style.display = "none";
   gameContainer.style.display = "block";
-  setup();
 
   return true;
 }
@@ -199,24 +172,12 @@ function handleLogout() {
   signupForm.reset();
   loginError.textContent = "";
   signupError.textContent = "";
-  loginMessage.textContent = "";
-  
-  // Show login tab by default
-  loginTab.classList.add("active");
-  signupTab.classList.remove("active");
-  loginForm.style.display = "flex";
-  signupForm.style.display = "none";
 }
 
 function updateLeaderboard() {
-  if (allUsers.length === 0) {
-    topPlayersList.innerHTML = "<li>No scores yet!</li>";
-    return;
-  }
-
-  const sortedUsers = [...allUsers].sort((a, b) => (b.bestScore || 0) - (a.bestScore || 0)).slice(0, 5);
-  topPlayersList.innerHTML = sortedUsers.map((user, index) => 
-    `<li>${index + 1}. ${user.username}: ${user.bestScore || 0}</li>`
+  const sortedUsers = [...allUsers].sort((a, b) => b.bestScore - a.bestScore).slice(0, 5);
+  topPlayersList.innerHTML = sortedUsers.map(user => 
+    `<li>${user.username}: ${user.bestScore}</li>`
   ).join("");
 }
 
@@ -225,8 +186,7 @@ function updateLeaderboard() {
 function setup() {
   currentScore = 0;
   flight = jump;
-  flyHeight = canvas.height / 2 - birdHeight / 2;
-  pipeGap = canvas.height * 0.3; // Update gap based on current canvas size
+  flyHeight = canvas.height / 2 - size[1] / 2;
   pipes = Array(3)
     .fill()
     .map((a, i) => [canvas.width + i * (pipeGap + pipeWidth), pipeLoc()]);
@@ -235,87 +195,70 @@ function setup() {
 }
 
 function pipeLoc() {
-  const minHeight = canvas.height * 0.1;
-  const maxHeight = canvas.height * 0.6;
-  return minHeight + Math.random() * (maxHeight - minHeight);
+  return (
+    Math.random() * (canvas.height - (pipeGap + pipeWidth) - pipeWidth) +
+    pipeWidth
+  );
 }
 
 function updateScoreDisplay() {
   bestScoreElement.textContent = `Best: ${bestScore}`;
-  currentScoreElement.textContent = `Score: ${currentScore}`;
+  currentScoreElement.textContent = `Current: ${currentScore}`;
 }
 
-function updatePipeColor() {
-  const colors = ['#e94560', '#4CAF50', '#2196F3', '#FF9800', '#9C27B0'];
-  const colorIndex = Math.floor(currentScore / 10) % colors.length;
-  pipeColor = colors[colorIndex];
-}
-
-function drawBird(x, y) {
-  ctx.save();
-  const rotation = Math.min(Math.max(flight * 3, -25), 25);
-  ctx.translate(x + birdWidth / 2, y + birdHeight / 2);
-  ctx.rotate(rotation * Math.PI / 180);
-  
-  const wingFrame = Math.floor(index / 5) % 2;
-  ctx.drawImage(
-    birdImg,
-    wingFrame * birdWidth, 0, birdWidth, birdHeight,
-    -birdWidth / 2, -birdHeight / 2, birdWidth, birdHeight
-  );
-  
-  ctx.restore();
-}
-
-function render() {
+function render(timestamp) {
   index++;
-  backgroundOffset = (backgroundOffset + speed / 3) % canvas.width;
 
   // Clear canvas
-  ctx.fillStyle = "#4facfe";
+  ctx.fillStyle = "#87CEEB";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Draw sky gradient
-  const skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  skyGradient.addColorStop(0, "#4facfe");
-  skyGradient.addColorStop(1, "#00f2fe");
-  ctx.fillStyle = skyGradient;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  // Draw zoomed background
+  const zoomedWidth = canvas.width * 1.8;
+  const zoomedHeight = canvas.height * 1.8;
+  const offsetX = (zoomedWidth - canvas.width) / 2;
+  const offsetY = (zoomedHeight - canvas.height) / 2;
 
-  // Draw clouds
-  ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
-  for (let i = 0; i < 5; i++) {
-    const x = (backgroundOffset + i * 200) % (canvas.width + 200) - 100;
-    const y = canvas.height * 0.2 + Math.sin(index * 0.02 + i) * 20;
-    drawCloud(x, y, 60, 30);
-  }
+  const bgPos1 = -((index * (speed / 3)) % zoomedWidth) + zoomedWidth;
+  const bgPos2 = -(index * (speed / 3)) % zoomedWidth;
+
+  ctx.drawImage(
+    images.background,
+    0, 0, images.background.width, images.background.height,
+    bgPos1 - offsetX, -offsetY, zoomedWidth, zoomedHeight
+  );
+
+  ctx.drawImage(
+    images.background,
+    0, 0, images.background.width, images.background.height,
+    bgPos2 - offsetX, -offsetY, zoomedWidth, zoomedHeight
+  );
+
+  // Draw ground
+  ctx.drawImage(
+    images.ground,
+    0, 0, canvas.width, 50,
+    0, canvas.height - 50, canvas.width, 50
+  );
 
   if (gamePlaying) {
-    updatePipeColor();
-
     // Update and draw pipes
     pipes.forEach((pipe) => {
       pipe[0] -= speed;
 
       // Draw top pipe
-      const topPipeGradient = ctx.createLinearGradient(pipe[0], 0, pipe[0] + pipeWidth, 0);
-      topPipeGradient.addColorStop(0, pipeColor);
-      topPipeGradient.addColorStop(1, lightenColor(pipeColor, 20));
-      ctx.fillStyle = topPipeGradient;
-      ctx.fillRect(pipe[0], 0, pipeWidth, pipe[1]);
-      ctx.strokeStyle = "#333";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(pipe[0], 0, pipeWidth, pipe[1]);
+      ctx.drawImage(
+        images.obstacleTop,
+        432, 588 - pipe[1], pipeWidth, pipe[1],
+        pipe[0], 0, pipeWidth, pipe[1]
+      );
 
       // Draw bottom pipe
-      const bottomPipeGradient = ctx.createLinearGradient(pipe[0], pipe[1] + pipeGap, pipe[0] + pipeWidth, pipe[1] + pipeGap);
-      bottomPipeGradient.addColorStop(0, pipeColor);
-      bottomPipeGradient.addColorStop(1, lightenColor(pipeColor, 20));
-      ctx.fillStyle = bottomPipeGradient;
-      ctx.fillRect(pipe[0], pipe[1] + pipeGap, pipeWidth, canvas.height - pipe[1] - pipeGap);
-      ctx.strokeStyle = "#333";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(pipe[0], pipe[1] + pipeGap, pipeWidth, canvas.height - pipe[1] - pipeGap);
+      ctx.drawImage(
+        images.obstacleBottom,
+        432 + pipeWidth, 108, pipeWidth, canvas.height - pipe[1] + pipeGap,
+        pipe[0], pipe[1] + pipeGap, pipeWidth, canvas.height - pipe[1] + pipeGap
+      );
 
       // Check if pipe passed
       if (pipe[0] <= -pipeWidth) {
@@ -325,6 +268,7 @@ function render() {
           sounds.score.play();
         }
 
+        // Update best score if needed
         if (currentScore > bestScore) {
           bestScore = currentScore;
           if (currentUser) {
@@ -341,81 +285,58 @@ function render() {
       }
 
       // Collision detection
-      const birdRight = canvas.width * 0.2 + birdWidth;
-      const birdLeft = canvas.width * 0.2;
-      const birdTop = flyHeight;
-      const birdBottom = flyHeight + birdHeight;
-
-      const pipeRight = pipe[0] + pipeWidth;
-      const pipeLeft = pipe[0];
-      const topPipeBottom = pipe[1];
-      const bottomPipeTop = pipe[1] + pipeGap;
-
       if (
-        birdRight > pipeLeft &&
-        birdLeft < pipeRight &&
-        (birdTop < topPipeBottom || birdBottom > bottomPipeTop)
+        pipe[0] <= cTenth + size[0] &&
+        pipe[0] + pipeWidth >= cTenth &&
+        (pipe[1] > flyHeight || pipe[1] + pipeGap < flyHeight + size[1])
       ) {
         gameOver();
       }
     });
 
-    // Update bird position
+    // Update character position
     flight += gravity;
-    flyHeight = Math.min(flyHeight + flight, canvas.height - birdHeight);
+    flyHeight = Math.min(flyHeight + flight, canvas.height - size[1] - 50);
 
-    // Draw bird
-    drawBird(canvas.width * 0.2, flyHeight);
+    // Draw character with rotation
+    ctx.save();
+    const rotation = Math.min(Math.max(flight * 3, -30), 30);
+    ctx.translate(cTenth + size[0] / 2, flyHeight + size[1] / 2);
+    ctx.rotate((rotation * Math.PI) / 180);
+    ctx.drawImage(
+      images.character,
+      -size[0] / 2, -size[1] / 2, size[0], size[1]
+    );
+    ctx.restore();
 
-    // Bottom collision
-    if (flyHeight >= canvas.height - birdHeight) {
+    // Ground collision
+    if (flyHeight >= canvas.height - size[1] - 50) {
       gameOver();
     }
   } else {
-    // Draw idle bird
-    flyHeight = canvas.height / 2 - birdHeight / 2;
-    drawBird(canvas.width / 2 - birdWidth / 2, flyHeight + Math.sin(index * 0.05) * 5);
+    // Draw idle character (center screen)
+    ctx.drawImage(
+      images.character,
+      canvas.width / 2 - size[0] / 2, flyHeight,
+      size[0], size[1]
+    );
 
-    // Draw start screen
-    ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-    ctx.fillRect(canvas.width / 2 - 120, canvas.height / 2 - 60, 240, 120);
-    
-    ctx.fillStyle = "#ffd700";
-    ctx.font = "bold 24px 'Press Start 2P'";
-    ctx.textAlign = "center";
-    ctx.fillText(`BEST: ${bestScore}`, canvas.width / 2, canvas.height / 2 - 15);
-    
+    // Draw start screen text with shadow
+    ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+    ctx.shadowBlur = 5;
+    ctx.shadowOffsetY = 3;
     ctx.fillStyle = "white";
-    ctx.font = "bold 18px 'Press Start 2P'";
-    ctx.fillText("TAP TO PLAY", canvas.width / 2, canvas.height / 2 + 30);
+    ctx.font = "bold 30px 'Press Start 2P'";
+    ctx.textAlign = "center";
+    ctx.fillText(`BEST: ${bestScore}`, canvas.width / 2, 245);
+    ctx.fillStyle = "#ffd166";
+    ctx.font = "bold 24px 'Press Start 2P'";
+    ctx.fillText("TAP TO PLAY", canvas.width / 2, 535);
+    ctx.shadowColor = "transparent";
   }
 
   updateScoreDisplay();
   animationFrameId = window.requestAnimationFrame(render);
-}
-
-function drawCloud(x, y, width, height) {
-  ctx.beginPath();
-  ctx.arc(x, y, height / 2, 0, Math.PI * 2);
-  ctx.arc(x + width * 0.3, y - height * 0.2, height * 0.6, 0, Math.PI * 2);
-  ctx.arc(x + width * 0.6, y, height * 0.5, 0, Math.PI * 2);
-  ctx.arc(x + width * 0.8, y + height * 0.1, height * 0.4, 0, Math.PI * 2);
-  ctx.closePath();
-  ctx.fill();
-}
-
-function lightenColor(color, percent) {
-  const num = parseInt(color.replace("#", ""), 16);
-  const amt = Math.round(2.55 * percent);
-  const R = (num >> 16) + amt;
-  const G = (num >> 8 & 0x00FF) + amt;
-  const B = (num & 0x0000FF) + amt;
-  return `#${(
-    0x1000000 +
-    (R < 255 ? (R < 1 ? 0 : R) : 255) * 0x10000 +
-    (G < 255 ? (G < 1 ? 0 : G) : 255) * 0x100 +
-    (B < 255 ? (B < 1 ? 0 : B) : 255)
-  ).toString(16).slice(1)}`;
 }
 
 function gameOver() {
@@ -425,14 +346,16 @@ function gameOver() {
   document.body.classList.remove("no-scroll");
   sounds.hit.play();
 
+  // Show game over screen
   finalScoreElement.textContent = `SCORE: ${currentScore}`;
   highScoreElement.textContent = `BEST: ${bestScore}`;
   gameOverElement.style.display = "block";
 
+  // Disable button and start countdown
   restartBtn.disabled = true;
   restartBtn.classList.remove("active");
   isCountdownActive = true;
-  let countdown = 3;
+  let countdown = 4;
   timerCountElement.textContent = countdown;
 
   clearInterval(countdownTimer);
@@ -461,10 +384,12 @@ function startGame() {
 }
 
 function handleInput(e) {
+  // Prevent default behavior for touch events and spacebar
   if (e.type === 'touchstart' || (e.type === 'keydown' && e.code === 'Space')) {
     e.preventDefault();
   }
 
+  // Block input during countdown
   if (isCountdownActive) return;
 
   if (gamePlaying) {
@@ -478,23 +403,18 @@ function handleInput(e) {
 /* EVENT LISTENERS */
 
 function setupAuthEventListeners() {
-  // Tab switching - fixed to properly handle clicks
-  loginTab.addEventListener("click", function(e) {
+  // Tab switching - fixed to properly toggle between forms
+  loginTab.addEventListener("click", (e) => {
     e.preventDefault();
-    if (this.classList.contains("active")) return;
-    
     loginTab.classList.add("active");
     signupTab.classList.remove("active");
     loginForm.style.display = "flex";
     signupForm.style.display = "none";
     loginError.textContent = "";
-    loginMessage.textContent = "";
   });
 
-  signupTab.addEventListener("click", function(e) {
+  signupTab.addEventListener("click", (e) => {
     e.preventDefault();
-    if (this.classList.contains("active")) return;
-    
     signupTab.classList.add("active");
     loginTab.classList.remove("active");
     signupForm.style.display = "flex";
@@ -502,13 +422,13 @@ function setupAuthEventListeners() {
     signupError.textContent = "";
   });
 
-  // Form submissions - fixed to properly handle submission
-  loginForm.addEventListener("submit", function(e) {
+  // Form submissions
+  loginForm.addEventListener("submit", (e) => {
     e.preventDefault();
     handleLogin(loginUsername.value, loginPassword.value);
   });
 
-  signupForm.addEventListener("submit", function(e) {
+  signupForm.addEventListener("submit", (e) => {
     e.preventDefault();
     handleSignup(
       signupUsername.value, 
@@ -519,14 +439,10 @@ function setupAuthEventListeners() {
 
   logoutBtn.addEventListener("click", handleLogout);
 
-  // Input focus handling
+  // Make sure inputs are focusable and work properly
   [loginUsername, loginPassword, signupUsername, signupPassword, signupConfirmPassword].forEach(input => {
-    input.addEventListener("focus", function() {
+    input.addEventListener("focus", () => {
       gamePlaying = false;
-      // Scroll into view on mobile
-      if (window.innerWidth <= 500) {
-        this.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
     });
   });
 }
@@ -535,28 +451,26 @@ function setupGameEventListeners() {
   // Mouse click
   canvas.addEventListener("click", handleInput);
 
-  // Keyboard space
+  // Keyboard space - only when game is focused
   document.addEventListener("keydown", (e) => {
     if ((e.code === "Space" || e.key === " ") && gameContainer.style.display === "block") {
       handleInput(e);
     }
   });
 
-  // Enhanced touch controls
-  canvas.addEventListener("touchstart", function(e) {
-    e.preventDefault();
-    handleInput(e);
-  }, { passive: false });
+  // Touch controls for mobile
+  canvas.addEventListener("touchstart", handleInput, { passive: false });
 
-  canvas.addEventListener("touchmove", function(e) {
+  // Prevent touchmove from scrolling during gameplay
+  canvas.addEventListener("touchmove", (e) => {
     if (gamePlaying || isCountdownActive) {
       e.preventDefault();
     }
   }, { passive: false });
 
   // Restart button
-  restartBtn.addEventListener("click", function() {
-    if (!this.disabled) {
+  restartBtn.addEventListener("click", () => {
+    if (!restartBtn.disabled) {
       startGame();
     }
   });
@@ -565,28 +479,27 @@ function setupGameEventListeners() {
 // Initialize the game
 function init() {
   // Set initial form states
-  loginTab.classList.add("active");
-  signupTab.classList.remove("active");
   loginForm.style.display = "flex";
   signupForm.style.display = "none";
 
-  // Setup event listeners
   setupAuthEventListeners();
   setupGameEventListeners();
   updateLeaderboard();
 
-  // Load game assets
-  birdImg.onload = function() {
-    setup();
-    animationFrameId = window.requestAnimationFrame(render);
-  };
-  birdImg.onerror = function() {
-    console.error("Error loading bird image");
-    // Fallback to rectangle if image fails to load
-    birdImg.onload = null;
-    setup();
-    animationFrameId = window.requestAnimationFrame(render);
-  };
+  // Wait for images to load
+  let imagesLoaded = 0;
+  const totalImages = Object.keys(images).length;
+
+  Object.values(images).forEach((img) => {
+    img.onload = () => {
+      imagesLoaded++;
+      if (imagesLoaded === totalImages) {
+        setup();
+        animationFrameId = window.requestAnimationFrame(render);
+      }
+    };
+    img.onerror = () => console.error("Error loading image:", img.src);
+  });
 }
 
 // Start the game
