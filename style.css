@@ -1,25 +1,24 @@
 /* Base Styles */
 * {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  background-color: #1a1a2e;
   font-family: "Press Start 2P", cursive;
+  background-color: #1a1a2e;
   color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
   overflow: hidden;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Auth Modal Styles */
+/* Auth Modal */
 .auth-modal {
   position: fixed;
   top: 0;
@@ -35,13 +34,13 @@ body {
 
 .auth-container {
   background-color: #16213e;
-  padding: 2rem;
+  border: 4px solid #0f3460;
   border-radius: 10px;
+  padding: 2rem;
   width: 90%;
   max-width: 400px;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
   text-align: center;
-  border: 4px solid #0f3460;
 }
 
 .auth-container h2 {
@@ -49,13 +48,12 @@ body {
   margin-bottom: 1.5rem;
   text-shadow: 3px 3px 0 #e94560;
   font-size: 1.8rem;
-  letter-spacing: 2px;
 }
 
 .auth-tabs {
   display: flex;
-  margin-bottom: 1.5rem;
   justify-content: center;
+  margin-bottom: 1.5rem;
   gap: 1rem;
 }
 
@@ -105,7 +103,6 @@ body {
 }
 
 .auth-form button {
-  margin-top: 0.5rem;
   padding: 0.9rem;
   font-family: "Press Start 2P", cursive;
   font-size: 0.8rem;
@@ -116,6 +113,7 @@ body {
   cursor: pointer;
   transition: all 0.2s;
   box-shadow: 0 4px 0 #2d7d31;
+  margin-top: 0.5rem;
 }
 
 .auth-form button:hover {
@@ -133,7 +131,13 @@ body {
   color: #ff6b6b;
   font-size: 0.6rem;
   margin-top: 0.5rem;
-  min-height: 1rem;
+  line-height: 1.4;
+}
+
+.auth-message {
+  color: #a5b1c2;
+  font-size: 0.6rem;
+  margin-top: 0.5rem;
   line-height: 1.4;
 }
 
@@ -151,17 +155,12 @@ body {
 
 .leaderboard-preview ol {
   text-align: center;
-  padding-left: 0;
   list-style-position: inside;
   font-size: 0.7rem;
   line-height: 1.8;
 }
 
-.leaderboard-preview li {
-  margin-bottom: 0.3rem;
-}
-
-/* Game Container Styles */
+/* Game Container */
 .game-container {
   display: none;
   width: 100%;
@@ -171,22 +170,18 @@ body {
 }
 
 header {
-  width: 100%;
   background-color: #0f3460;
   border-radius: 10px 10px 0 0;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-  margin-bottom: -5px;
-  z-index: 10;
   border-bottom: 4px solid #e94560;
+  z-index: 10;
 }
 
 h1 {
   padding: 1rem 0;
-  margin: 0;
   color: #ffd700;
   text-align: center;
   text-shadow: 3px 3px 0 #e94560;
-  letter-spacing: 2px;
   font-size: 1.5rem;
 }
 
@@ -327,13 +322,7 @@ h1 {
   box-shadow: 0 1px 0 #7a1c2e;
 }
 
-/* Animations */
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-
-/* Responsive Adjustments */
+/* Responsive */
 @media (max-width: 500px) {
   .auth-container {
     padding: 1.5rem;
