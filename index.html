@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Nami's Adventure</title>
+  <title>Flappy Bird Adventure</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -11,19 +11,19 @@
   <!-- Login/Signup Modal -->
   <div class="auth-modal" id="authModal">
     <div class="auth-container">
-      <h2>NAMI'S ADVENTURE</h2>
+      <h2>FLAPPY BIRD</h2>
       <div class="auth-tabs">
         <button class="auth-tab active" id="loginTab">LOGIN</button>
         <button class="auth-tab" id="signupTab">SIGN UP</button>
       </div>
-      
+
       <form id="loginForm" class="auth-form active">
         <input type="text" id="loginUsername" placeholder="Username" required>
         <input type="password" id="loginPassword" placeholder="Password" required>
         <button type="submit">PLAY</button>
         <p class="auth-error" id="loginError"></p>
       </form>
-      
+
       <form id="signupForm" class="auth-form">
         <input type="text" id="signupUsername" placeholder="Username" required minlength="3" maxlength="20">
         <input type="password" id="signupPassword" placeholder="Password" required minlength="6">
@@ -31,37 +31,37 @@
         <button type="submit">CREATE ACCOUNT</button>
         <p class="auth-error" id="signupError"></p>
       </form>
-      
+
       <div class="leaderboard-preview">
         <h3>TOP PLAYERS</h3>
         <ol id="topPlayersList">
-          <li>Loading...</li>
+          <li>No scores yet!</li>
         </ol>
       </div>
     </div>
   </div>
 
-  <!-- Game Container (hidden initially) -->
+  <!-- Game Container -->
   <div class="game-container" id="gameContainer">
     <header>
-      <h1>NAMI'S ADVENTURE</h1>
+      <h1>FLAPPY BIRD</h1>
       <div class="score-container">
         <div id="bestScore">Best: 0</div>
-        <div id="currentScore">Current: 0</div>
+        <div id="currentScore">Score: 0</div>
         <div id="playerName">Guest</div>
       </div>
     </header>
-    <canvas id="canvas" width="431" height="768"></canvas>
+    <canvas id="canvas"></canvas>
     <div class="game-over">
       <h2>GAME OVER!</h2>
       <p id="finalScore">Score: 0</p>
       <p id="highScore">Best: 0</p>
       <button class="restart-btn" disabled>PLAY AGAIN</button>
-      <div class="timer-text">Available in <span class="timer-count">4</span>s</div>
+      <div class="timer-text">Available in <span class="timer-count">3</span>s</div>
     </div>
     <div class="instructions">
       Tap or press SPACE to jump<br>
-      Avoid the obstacles!
+      Avoid the pipes!
     </div>
     <button class="logout-btn" id="logoutBtn">LOGOUT</button>
   </div>
